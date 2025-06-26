@@ -49,9 +49,6 @@ def collect_one(prompt, api_key, modelname, sample_num=20):
 #     # API_SECRET_KEY = "xxxxxx";
 #     # BASE_URL = "https://api.zhizengzeng.com/v1/"
 #
-#     API_SECRET_KEY = "sk-zk238a51b86ab218c5f6277b7ac2017ed7865ee8fbc93104"
-#     BASE_URL = "https://api.zhizengzeng.com/v1/"
-#
 #     content = ''
 #     for i in prompt:
 #         content += i['content']
