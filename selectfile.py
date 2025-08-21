@@ -75,12 +75,12 @@ model = input("model")
 # stra = input("strategy:")
 
 language_pairs = [
-    # ("cpp", "python"),  # C++ to Python
-    # ("python", "cpp"),  # Python to C++
-    # ("java", "cpp"),  # Java to C++
-    # ("cpp", "java"),  # C++ to Java
+    ("cpp", "python"),  # C++ to Python
+    ("python", "cpp"),  # Python to C++
+    ("java", "cpp"),  # Java to C++
+    ("cpp", "java"),  # C++ to Java
     ("python", "java"),  # Python to Java
-    #("java", "python")  # Java to Python
+    ("java", "python")  # Java to Python
 ]
 # threshold = [0.92, 0.93, 0.94, 0.95, 0.96, 0.97, 0.98, 0.99]
 # for thre in threshold:

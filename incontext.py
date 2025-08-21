@@ -14,7 +14,7 @@ from templates.examples_trans import \
     example_test_cases_java, example_test_cases_cpp, example_test_cases_python
 from templates.example_refine import python_refine_example2_1, python_refine_example2_2, \
     cpp_refine_example2_1, cpp_refine_example2_2, java_refine_example2_1, java_refine_example2_2
-from syntax_generator import get_all_sub_trees, get_coverage_of_cand_tree, update_cur_refer_tree, get_coverage_of_cand_dataflow, update_cur_refer_dataflow, get_data_flow, normalize_dataflow
+from syntax_generator import get_all_sub_trees, get_coverage_of_cand_tree, update_cur_refer_tree, ast_edit_distance, get_coverage_of_cand_dataflow, update_cur_refer_dataflow, get_data_flow, normalize_dataflow
 
 from sklearn.metrics.pairwise import cosine_similarity
 
@@ -35,7 +35,7 @@ def get_example_code(src_lang, dst_lang, data, codeimbeddings, item, outdir, sel
 
     #data.pop(item, 'None')
 
-    if(selection == "similarity"):
+    if(selection == "similarity"): #LD
         #similarity selection
         sim_src_codes = get_similar_incontext(item, data.keys(), shots)
         sim_dst_codes = [data[code] for code in sim_src_codes]
@@ -77,6 +77,11 @@ def get_example_code(src_lang, dst_lang, data, codeimbeddings, item, outdir, sel
 
         return bm25_src_codes, bm25_dst_codes  # Return the top 'shots' BM25-based similar codes
 
+    elif(selection == "TED"): # AST ED
+        #similarity selection
+        sim_src_codes = get_similar_tree(item, data.keys(), src_lang, shots)
+        sim_dst_codes = [data[code] for code in sim_src_codes]
+        return sim_src_codes, sim_dst_codes  # Return the destination codes for the top 'shots' most similar codes
 
 
     elif(selection == "coverage"):
@@ -237,6 +242,19 @@ def get_similar_incontext_by_codebert(itemcode, src_codes, shots, codeimbeddings
 
     return top_codes  # Return the top 'shots' most similar source codes
 
+def get_similar_tree(itemcode, src_codes, code_lang, shots):
+   # List to hold codes and their similarity scores
+    code_scores = []
+
+    # Calculate similarity for each source code using AST edit distance
+    for code in src_codes:
+        score = ast_edit_distance(itemcode, code, code_lang)
+        code_scores.append((code, score))
+    # Sort by score (ascending), then extract the top 'shots' codes
+    code_scores.sort(key=lambda x: x[1])
+    top_codes = [code for code, score in code_scores[:shots]]
+
+    return top_codes  # Return the top 'shots' most similar source codes
 
 
 from sklearn.cluster import KMeans
@@ -331,3 +349,4 @@ def levenshtein_distance(s1, s2):
 def get_random_incontext(itemcode, src_codes, shots):
     # List to hold codes and their similarity scores
     return random.sample(src_codes,shots)
+

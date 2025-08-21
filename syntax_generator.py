@@ -1,61 +1,4 @@
-# import antlr4
-# from antlr4 import *
-# from java.antlr_unit2 import Java8Parser, Java8Lexer
 
-# def main():
-#     code = "a = 1"
-#     lexer = Java8Lexer.Java8Lexer(antlr4.InputStream(code))
-#     stream = antlr4.CommonTokenStream(lexer)
-#     parser = Java8Parser.Java8Parser(stream)
-#     tree = parser.compilationUnit()
-#     print(tree.toStringTree(recog=parser))
-
-# if __name__ == '__main__':
-#     main()
-
-
-
-# import clang.cindex
-
-# index = clang.cindex.Index.create()
-# cpp_file = '/home/duyl/grammartran/FSE-24-UniTrans-main/cleaned_data/llama70b/test_scripts_w_0cases_2round/python_cpp/PROGRAM_AREA_SQUARE/sample_0.cpp'
-
-# translation_unit = index.parse(cpp_file)
-
-# for node in translation_unit.cursor.walk_preorder():
-#     if node.kind.is_declaration():
-#         print('Declaration:', node.spelling)
-
-#     if node.kind.is_reference():
-#         print('Reference:', node.spelling)
-
-#     if node.kind.is_expression():
-#         print('Expression:', node.spelling)
-
-#     if node.kind.is_statement():
-#         print('Statement:', node.spelling)
-
-
-# coding=utf-8
-# Copyright 2018 The Google AI Language Team Authors and The HuggingFace Inc. team.
-# Copyright (c) 2018, NVIDIA CORPORATION.  All rights reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-"""
-Fine-tuning the library models for language modeling on a text file (GPT, GPT-2, BERT, RoBERTa).
-GPT and GPT-2 are fine-tuned using a causal language modeling (CLM) loss while BERT and RoBERTa are fine-tuned
-using a masked language modeling (MLM) loss.
-"""
 
 from __future__ import absolute_import
 import os
@@ -83,6 +26,7 @@ from transformers import (WEIGHTS_NAME, AdamW, get_linear_schedule_with_warmup,
                           RobertaConfig, RobertaModel, RobertaTokenizer,
                           AutoConfig, AutoModel, AutoTokenizer)
 from tree_sitter import Language, Parser
+from typing import List, Optional
 sys.path.append('..')
 
 
@@ -327,6 +271,83 @@ def normalize_dataflow(dataflow):
     return normalized_dataflow
 
 
+
+
+def _ast_node_distance(node1, node2) -> int:
+    """计算两个tree-sitter节点之间的距离（支持多语言）"""
+    if node1 is None and node2 is None:
+        return 0
+    if node1 is None or node2 is None:
+        return 1
+    
+    # 节点类型不同，基础代价（多语言通用）
+    cost = 0 if node1.type == node2.type else 1
+    
+    # 比较节点文本内容（标识符、关键字、字面量等）
+    # 不同语言的文本含义可能不同，但统一比较文本值
+    if node1.text != node2.text:
+        cost += 1
+    
+    return cost
+
+def _ast_node_type_distance(type1: str, type2: str) -> int:
+    """计算两个节点类型的距离（仅比较类型字符串）"""
+    return 0 if type1 == type2 else 1  # 类型相同代价0，不同代价1
+
+def _sequence_ast_distance(seq1_types: List[str], seq2_types: List[str]) -> int:
+    """计算两个“节点类型序列”的编辑距离（动态规划核心）"""
+    m, n = len(seq1_types), len(seq2_types)
+    dp = [[0] * (n + 1) for _ in range(m + 1)]
+    
+    # 初始化边界：空序列与非空序列的距离=非空序列长度（全插入/删除）
+    for i in range(m + 1):
+        dp[i][0] = i
+    for j in range(n + 1):
+        dp[0][j] = j
+    
+    # 填充DP表：仅基于节点类型计算代价
+    for i in range(1, m + 1):
+        for j in range(1, n + 1):
+            type_cost = _ast_node_type_distance(seq1_types[i-1], seq2_types[j-1])
+            dp[i][j] = min(
+                dp[i-1][j] + 1,          # 删除：移除seq1的当前类型
+                dp[i][j-1] + 1,          # 插入：给seq1插入seq2的当前类型
+                dp[i-1][j-1] + type_cost # 替换：类型相同代价0，不同代价1
+            )
+    
+    return dp[m][n]
+
+def _parse_code_to_ast(code: str, language: str):
+    """将代码字符串解析为指定语言的AST根节点"""
+    parser = parsers[language]
+    if not parser:
+        return None
+    try:
+        tree = parser.parse(bytes(code, "utf8"))
+        return tree.root_node
+    except Exception:
+        return None
+
+def ast_edit_distance(code1: str, code2: str, language: str) -> int:
+    """计算两种代码的AST编辑距离（支持多语言）"""
+    # 解析为指定语言的AST
+    ast1 = _parse_code_to_ast(code1, language)
+    ast2 = _parse_code_to_ast(code2, language)
+    
+    # 处理解析失败的情况
+    if ast1 is None and ast2 is None:
+        return 0
+    if ast1 is None or ast2 is None:
+        return float('inf')  # 一方解析失败，视为差异极大
+    
+     # 关键：提取根节点子节点的“类型序列”（而非节点本身）
+    ast1_child_types = [child.type for child in ast1.children]
+    ast2_child_types = [child.type for child in ast2.children]
+    
+    # 计算类型序列的编辑距离
+    return _sequence_ast_distance(ast1_child_types, ast2_child_types)
+
+
 if __name__ == "__main__":
     source_code = """class Javahelloworld {
     public static void main(String args[]){
@@ -342,3 +363,5 @@ if __name__ == "__main__":
 
     type_list = get_type_list(source_code, "java")
     print(type_list)
+
+
