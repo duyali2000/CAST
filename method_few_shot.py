@@ -42,34 +42,6 @@ def collect_one(prompt, api_key, modelname, sample_num=20):
     return candidates
 
 
-#GPT-4
-# 最少等待1秒，最多10秒
-# @retry(wait=wait_random_exponential(min=5, max=10), retry=retry_if_exception_type())
-# def collect_one(prompt, api_key, sample_num=20):
-#     # API_SECRET_KEY = "xxxxxx";
-#     # BASE_URL = "https://api.zhizengzeng.com/v1/"
-#
-#     content = ''
-#     for i in prompt:
-#         content += i['content']
-#     print(content)
-#
-#     client = OpenAI(api_key=API_SECRET_KEY, base_url=BASE_URL)
-#     resp = client.chat.completions.create(
-#         model="gpt-4o",
-#         messages=[
-#             {"role": "system", "content": "You are a helpful assistant."},
-#             {"role": "user", "content": content}
-#         ]
-#     )
-#     #print(resp.choices[0].message.content)
-#     print(resp)
-#
-#     candidates = [resp.choices[0].message.content]
-#     return candidates
-
-
-
 def get_code_embedding(codes):
 
     tokenizer = RobertaTokenizer.from_pretrained('/data2/duyl/pretrainmodels/codebert')
@@ -235,3 +207,4 @@ if __name__ == "__main__":
 
 # python method_few_shot.py --src_lang cpp --dst_lang python --obj 3 --k 10  --model_name qwen2:7b --shots 5 --round 2 --selection similarity --shortname qwen7b
 # python method_few_shot.py --src_lang cpp --dst_lang python --obj 3 --k 10  --model_name gpt4 --shots 5 --round 2 --selection coverage --shortname gpt4
+
